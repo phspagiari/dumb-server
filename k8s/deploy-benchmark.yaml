@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name:  bash-script
+data:
+  script.sh: |
+    #!/bin/bash
+
+    HOST=dumb-server.default
+
+    apt-get update && apt-get install --yes curl ssh jq awscli
+    pip install awscli
+
+    ssh-keygen -b 4096 -t rsa -N '' -q -f /root/.ssh/id_rsa
+    value=$(cat /root/.ssh/id_rsa.pub |grep -Eo '[a-zA-Z0-9]+'|tr -d '\n')
+
+    for num in {1..99}; do
+      bash -c "curl -s -w '{\"time_total\": \"%{time_total}\"}\n' http://$HOST/create/$num/$value | jq -s add | jq -r '\"node: \"+.node+\" - pod: \"+.pod+\" - time_total: \"+.time_total+\" - time_elapsed: \"+(.time_elapsed|tostring)' "&
+    done
+---
+
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: toolbox
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: toolbox
+        release: "2"
+    spec:
+      volumes:
+      - name: bash-script
+        configMap:
+          name: bash-script
+      containers:
+      - name: toolbox
+        image: ubuntu:latest
+        volumeMounts:
+          - mountPath: /workload
+            name: bash-script
+        command:
+          - /bin/bash
+          - /workload/script.sh

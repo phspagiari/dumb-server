@@ -1,0 +1,19 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: dumb-server
+  labels:
+    app: dumb-server
+    product: default
+    tier: internal
+  annotations:
+    kubernetes.io/ingress.class: "internal"
+spec:
+  rules:
+  - host: dumb-server.internal
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: dumb-server
+          servicePort: 80
